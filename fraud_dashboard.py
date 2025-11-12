@@ -9,7 +9,7 @@ from wordcloud import WordCloud
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from semantic_search import search as semantic_search
-
+f
 # ------------------------------------------------------------
 # Supabase client setup
 # ------------------------------------------------------------
@@ -176,23 +176,223 @@ def main():
             fig_ft = px.bar(fraud_trend, x="fraud_type", y="Count", color="Count", title="Fraud Type Frequency")
             st.plotly_chart(fig_ft, width="stretch")
 
-        # Timeline
-        st.subheader("📈 Fraud Mentions Over Time")
-        timeline = (
-            filtered_df.groupby([pd.Grouper(key="date", freq="ME"), "fraud_type"])
-            .size()
-            .reset_index(name="Count")
-        )
-        if not timeline.empty:
-            fig_timeline = px.line(timeline, x="date", y="Count", color="fraud_type", title="Fraud Trends Over Time")
-            st.plotly_chart(fig_timeline, width="stretch")
+                # ==========================
+        # GitHub-Style Fraud Activity Calendar (fully proportional + full-width + interactive)
+        # ==========================
+        from datetime import date, timedelta
+        import calendar
+        import streamlit.components.v1 as components
 
-        # Summary
-        st.subheader("🧩 Summary of Findings")
-        top_kw = ", ".join(kw_df.head(5)["Keyword"]) if 'kw_df' in locals() and not kw_df.empty else "N/A"
-        top_trends = ", ".join(fraud_trend.head(3)["fraud_type"]) if not fraud_trend.empty else "N/A"
-        st.success(f"**Top 5 Keywords:** {top_kw}")
-        st.info(f"**Top 3 Fraud Trends:** {top_trends}")
+        st.subheader("GitHub-Style Fraud Activity")
+
+        # --- Build 1-year range and fraud counts/types ---
+        today = date.today()
+        start_date = today - timedelta(days=365)
+        all_days = pd.date_range(start=start_date, end=today, freq="D")
+
+        # Group articles by day and collect fraud types
+        day_types = (
+            df.groupby(df["date"].dt.date)["fraud_type"]
+            .agg(list)
+            .to_dict()
+        )
+
+        # --- Fixed color palette for four fraud types ---
+        fraud_colors = {
+            "generic": "#39d353",          # bright green
+            "wire_transfer": "#26a641",    # dark green
+            "identity_theft": "#2188ff",   # blue
+            "money_laundering": "#ff7b72", # orange-red
+        }
+
+        def color_for_day(types):
+            if not types:
+                return "#161b22"  # empty background
+            t = types[0]
+            return fraud_colors.get(t, "#8b949e")  # gray fallback
+
+        # --- CSS and HTML Grid ---
+        html = """
+        <style>
+        .calendar-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .calendar-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            width: 100%;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(53, 1fr);
+            grid-auto-rows: 14px;
+            grid-gap: 2px;
+            width: 100%;
+        }
+        .daybox {
+            width: 100%;
+            height: 14px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .daybox:hover {
+            outline: 1px solid #58a6ff;
+        }
+        .month-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #8b949e;
+            margin-left: 24px;
+            margin-right: 10px;
+            width: calc(100% - 34px);
+        }
+        .weekday-labels {
+            display: grid;
+            grid-template-rows: repeat(7, 16px);
+            grid-gap: 2px;
+            font-size: 10px;
+            color: #8b949e;
+            margin-top: 14px;
+        }
+        .legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            color: #8b949e;
+            margin-top: 10px;
+            margin-left: 20px;
+            flex-wrap: wrap;
+        }
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+        </style>
+
+        <div class='month-labels'>
+        """
+        # Month labels (Jan–Dec)
+        for m in range(1, 13):
+            html += f"<span>{calendar.month_abbr[m]}</span>"
+        html += "</div><div class='calendar-container'><div class='calendar-wrapper'>"
+
+        # Dynamically render Mon/Wed/Fri on alternating rows
+        weekday_labels = ["Mon", "Wed", "Fri"]
+        html += "<div class='weekday-labels'>"
+        for i in range(7):
+            # Only show Mon/Wed/Fri on alternating (odd) rows
+            label = weekday_labels[i % 3] if i % 2 == 1 else ""
+            html += f"<span>{label}</span>"
+        html += "</div>"
+
+        # Main 53x7 grid
+        html += "<div class='calendar' id='fraudCalendar'>"
+        for d in all_days:
+            types = day_types.get(d.date(), [])
+            color = color_for_day(types)
+            title = f"{d.date()}: {'None' if not types else ', '.join(types)}"
+            html += f"<div class='daybox' title='{title}' data-day='{d.date()}' style='background:{color};'></div>"
+        html += "</div></div></div>"
+
+        # Color legend
+        html += "<div class='legend'>"
+        for ftype, color in fraud_colors.items():
+            label = ftype.replace('_', ' ').title()
+            html += f"<span class='legend-box' style='background:{color};'></span>{label}"
+        html += "<span class='legend-box' style='background:#161b22;'></span>None"
+        html += "</div>"
+
+        # JS click → update Streamlit query params (inline update)
+        html += """
+        <script>
+        const boxes = document.querySelectorAll('.daybox');
+        boxes.forEach(b => {
+            b.addEventListener('click', () => {
+                const day = b.dataset.day;
+                const frame = window.parent;
+                frame.postMessage({type:'select-day', day:day}, '*');
+            });
+        });
+        </script>
+        """
+
+        components.html(html, height=270)
+
+        # JS listener to sync with Streamlit query params
+        components.html(
+            """
+            <script>
+            window.addEventListener('message', (event) => {
+                if (event.data.type === 'select-day') {
+                    const d = event.data.day;
+                    const qs = new URLSearchParams(window.location.search);
+                    qs.set('day', d);
+                    window.location.search = qs.toString();
+                }
+            });
+            </script>
+            """,
+            height=0,
+        )
+
+        # Drill-down section (same as before)
+        params = st.query_params
+        if "day" in params:
+            chosen_date = pd.to_datetime(params["day"]).date()
+            st.markdown(f"### Articles on {chosen_date}")
+            day_articles = df[df["date"].dt.date == chosen_date]
+            if day_articles.empty:
+                st.info("No CFPB articles found for this day.")
+            else:
+                for _, r in day_articles.iterrows():
+                    st.markdown(
+                        f"**{r['title']}** — *{r['fraud_type']}*  \n"
+                        f"{r.get('summary', '')}  \n"
+                        f"[Read More]({r['url']})"
+                    )
+
+        
+        # --- Daily Trending Fraud Type (GitHub-style summary) ---
+        st.subheader("🔥 Today's Trending Fraud Type")
+        if not df.empty:
+            today = pd.Timestamp.now().normalize()
+            daily_df = df[df["date"].dt.date == today.date()]
+
+            if daily_df.empty:
+                st.warning("No fraud articles found for today.")
+            else:
+                top_today = (
+                    daily_df["fraud_type"]
+                    .value_counts()
+                    .reset_index()
+                    .rename(columns={"index": "fraud_type", "fraud_type": "count"})
+                )
+                most_common_type = top_today.iloc[0]["fraud_type"]
+                count_today = top_today.iloc[0]["count"]
+
+                st.markdown(f"""
+                <div style='
+                    display:flex;
+                    align-items:center;
+                    background-color:#0d1117;
+                    border:1px solid #30363d;
+                    border-radius:8px;
+                    padding:10px 16px;
+                    margin-top:12px;
+                '>
+                    <img src='https://img.icons8.com/ios-filled/50/79c0ff/fire-element.png' width='26' style='margin-right:10px;'/>
+                    <span style='font-size:1.1em;color:#79c0ff;font-weight:600'>
+                        🔥 Today's trending fraud type: <b style='color:#58a6ff'>{most_common_type.replace("_"," ").title()}</b>
+                        &nbsp;({count_today} mentions)
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
 
         # Recent Articles
         st.subheader("📰 Recent Fraud Articles")

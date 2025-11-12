@@ -1,0 +1,267 @@
+# fraud_dashboard.py
+import os
+import numpy as np
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+from collections import Counter
+from wordcloud import WordCloud
+from dotenv import load_dotenv
+from supabase import create_client, Client
+from semantic_search import search as semantic_search
+
+# ------------------------------------------------------------
+# Supabase client setup
+# ------------------------------------------------------------
+def get_client() -> Client:
+    load_dotenv()
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        raise RuntimeError("Missing SUPABASE_URL or SUPABASE_KEY in .env")
+    return create_client(url, key)
+
+# ------------------------------------------------------------
+# Load data
+# ------------------------------------------------------------
+@st.cache_data(ttl=600)
+def load_data():
+    supabase = get_client()
+    res = supabase.table("cfpb_articles").select("*").execute()
+    df = pd.DataFrame(res.data)
+    if df.empty:
+        return pd.DataFrame()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.sort_values("date")
+    return df
+
+# ------------------------------------------------------------
+# cache wrapper so repeated searches don't re-run
+# The semantic_search() already caches embeddings in Supabase,
+# this just avoids redoing the RPC + filtering for the same UI inputs.
+# ------------------------------------------------------------
+@st.cache_data(ttl=900, show_spinner=False)
+def run_cached_semantic(query, top_k, threshold, year, keyword):
+    return semantic_search(
+        query=query,
+        top_k=top_k,
+        threshold=threshold,
+        year=year,
+        keyword=keyword,
+    )
+
+# ------------------------------------------------------------
+# Main Streamlit App
+# ------------------------------------------------------------
+def main():
+    st.set_page_config(page_title="USAA Fraud NLP Dashboard", layout="wide")
+    st.title("🧠 USAA Fraud Detection — Full Project Dashboard")
+
+    df = load_data()
+    if df.empty:
+        st.error("❌ No data found in Supabase. Please run scraper + upload first.")
+        return
+    st.success(f"✅ Loaded {len(df)} CFPB articles")
+
+    # --------------------------------------------------------
+    # Create Tabs
+    # --------------------------------------------------------
+    week2, week3, week4, semtab = st.tabs([
+        "📄 Week 2: Scraper",
+        "🔍 Week 3: Fraud Detection",
+        "📊 Week 4: Analysis",
+        "🔎 Semantic Search"
+    ])
+
+    # =======================
+    # 🗞️ WEEK 2 — SCRAPER
+    # =======================
+    with week2:
+        st.header("Week 2 — Build Scraper")
+        st.write("Goal: Get articles from CFPB source and clean text for analysis.")
+        st.write(f"**Total Articles Scraped:** {len(df)}")
+        st.dataframe(df[["title", "date", "url"]].head(10), width="stretch")
+
+        st.subheader("Example Article Text Preview")
+        sample = df.sample(1).iloc[0]
+        st.markdown(f"**Title:** {sample['title']}")
+        st.markdown(f"**Date:** {sample['date'].date()}")
+        st.markdown(f"**URL:** [Read Article]({sample['url']})")
+        st.text_area("Excerpt", (sample.get("text") or "")[:600] + "...")
+
+    # ==========================
+    # 🔍 WEEK 3 — FRAUD DETECTION
+    # ==========================
+    with week3:
+        st.header("Week 3 — Fraud Detection")
+        st.write("Goal: Identify and tag fraud-related articles.")
+        st.metric("Distinct Fraud Types", int(df["fraud_type"].dropna().nunique()))
+        st.metric("Total Fraud-Tagged Articles", int((df["fraud_type"] != "not_fraud").sum()))
+
+        st.subheader("Fraud Tags by Frequency")
+        tags = df["fraud_tags"].dropna().tolist()
+        tag_list = [t.strip() for tags_str in tags for t in tags_str.split(",") if t.strip()]
+        tag_counts = Counter(tag_list)
+        kw_df = pd.DataFrame(tag_counts.most_common(10), columns=["Keyword", "Count"])
+        st.bar_chart(kw_df.set_index("Keyword"))
+        st.dataframe(kw_df, width="stretch")
+
+        st.subheader("Word Cloud of Fraud Keywords")
+        if tag_list:
+            wordcloud = WordCloud(width=800, height=400, background_color="white").generate(" ".join(tag_list))
+            st.image(wordcloud.to_array(), width="stretch")
+
+    # ==========================
+    # 📊 WEEK 4 — ANALYSIS
+    # ==========================
+    with week4:
+        st.header("Week 4 — Full Pipeline & Trend Analysis")
+        st.write("Goal: Complete pipeline (scrape → detect → summarize) and identify top trends.")
+
+    # ---------- Filters ----------
+        col1, col2 = st.columns(2)
+        fraud_types = df["fraud_type"].dropna().unique().tolist()
+        selected_types = col1.multiselect("Filter by Fraud Type", fraud_types, default=fraud_types)
+        date_min, date_max = df["date"].min().date(), df["date"].max().date()
+        date_range = col2.slider("Select Date Range", date_min, date_max, (date_min, date_max))
+
+    # Optional Year Filter
+        colD = st.columns(1)[0]
+        enable_year = colD.toggle("Filter by specific year", value=False)
+        year = None
+        if enable_year:
+            default_year = int(df["date"].dt.year.min()) if not df.empty else 2020
+            year = colD.number_input(
+                "Year",
+                min_value=1900,
+                max_value=2100,
+                value=default_year,
+                step=1
+        )
+
+    # Apply filters
+    filtered_df = df[
+        (df["fraud_type"].isin(selected_types)) &
+        (df["date"].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])))
+    ]
+    if year:
+        filtered_df = filtered_df[df["date"].dt.year == year]
+
+
+        # Overview
+        c3, c4, c5 = st.columns(3)
+        c3.metric("Articles in Range", len(filtered_df))
+        c4.metric("Fraud Types Displayed", len(selected_types))
+        c5.metric("Date Range", f"{date_range[0]} → {date_range[1]}")
+
+        # Top Keywords
+        st.subheader("🔑 Top Keywords / Phrases")
+        if not filtered_df.empty:
+            tags = filtered_df["fraud_tags"].dropna().tolist()
+            all_tags = [t.strip() for tags_str in tags for t in tags_str.split(",") if t.strip()]
+            tag_counts = Counter(all_tags)
+            kw_df = pd.DataFrame(tag_counts.most_common(10), columns=["Keyword", "Count"])
+            fig_kw = px.bar(kw_df, x="Keyword", y="Count", title="Top Fraud Keywords / Phrases", color="Count")
+            st.plotly_chart(fig_kw, width="stretch")
+
+        # Top Fraud Types
+        st.subheader("🚨 Top Fraud Types")
+        fraud_trend = (
+            filtered_df.groupby("fraud_type")
+            .size()
+            .sort_values(ascending=False)
+            .reset_index(name="Count")
+        )
+        if not fraud_trend.empty:
+            fig_ft = px.bar(fraud_trend, x="fraud_type", y="Count", color="Count", title="Fraud Type Frequency")
+            st.plotly_chart(fig_ft, width="stretch")
+
+        # Timeline
+        st.subheader("📈 Fraud Mentions Over Time")
+        timeline = (
+            filtered_df.groupby([pd.Grouper(key="date", freq="ME"), "fraud_type"])
+            .size()
+            .reset_index(name="Count")
+        )
+        if not timeline.empty:
+            fig_timeline = px.line(timeline, x="date", y="Count", color="fraud_type", title="Fraud Trends Over Time")
+            st.plotly_chart(fig_timeline, width="stretch")
+
+        # Summary
+        st.subheader("🧩 Summary of Findings")
+        top_kw = ", ".join(kw_df.head(5)["Keyword"]) if 'kw_df' in locals() and not kw_df.empty else "N/A"
+        top_trends = ", ".join(fraud_trend.head(3)["fraud_type"]) if not fraud_trend.empty else "N/A"
+        st.success(f"**Top 5 Keywords:** {top_kw}")
+        st.info(f"**Top 3 Fraud Trends:** {top_trends}")
+
+        # Recent Articles
+        st.subheader("📰 Recent Fraud Articles")
+        for _, row in filtered_df.head(5).iterrows():
+            st.markdown(
+                f"**{row['title']}** — *{row['fraud_type']}* ({row['date'].date()})  \n"
+                f"{row.get('summary','')}  \n[Read More]({row['url']})"
+            )
+
+        # Download
+        csv = filtered_df.to_csv(index=False).encode("utf-8")
+        st.download_button("💾 Download Filtered Data as CSV", data=csv, file_name="fraud_analysis_filtered.csv")
+
+    # ==========================
+    # 🔎 SEMANTIC SEARCH (embeddings)
+    # ==========================
+    with semtab:
+        st.header("Semantic Search — Embedding Powered")
+        st.write("Type a natural-language query. We embed it with OpenAI and run pgvector similarity in Supabase.")
+
+        colA, colB = st.columns([3, 1])
+        query = colA.text_input("Search query", placeholder="e.g., zelle unauthorized transfer")
+        top_k = colB.slider("Top K", 5, 40, 10, step=5)
+
+        colC, colD = st.columns([1, 1])
+        threshold = colC.number_input("Min similarity (0–1)", 0.0, 1.0, 0.55, 0.01)
+        enable_year = colD.toggle("Filter by year", value=False)
+        year = None
+        if enable_year:
+    # pick a safe default from your data if you like; 2020 is fine fallback
+            default_year = 2020
+            year = colD.number_input("Year", min_value=1900, max_value=2100, value=default_year, step=1)
+
+        keyword = st.text_input("Optional keyword filter (title contains)")
+
+        if st.button("Run semantic search", type="primary"):
+            if not query.strip():
+                st.warning("Please enter a query.")
+            else:
+                with st.spinner("Searching…"):
+                    try:
+                        results = run_cached_semantic(
+                            query=query.strip(),
+                            top_k=top_k,
+                            threshold=threshold,
+                            year=year,
+                            keyword=(keyword.strip() or None),
+                        )
+                    except Exception as e:
+                        st.error(f"Search failed: {e}")
+                        results = []
+
+                if not results:
+                    st.info("No matches (try lowering similarity threshold or removing filters).")
+                else:
+                    res_df = pd.DataFrame(results)
+                    # format similarity nicely if present
+                    if "similarity" in res_df.columns:
+                        res_df["similarity"] = res_df["similarity"].map(lambda x: round(float(x), 3))
+                    keep_cols = [c for c in ["title","fraud_type","date","similarity","url","summary"] if c in res_df.columns]
+                    st.success(f"Found {len(res_df)} matches")
+                    st.dataframe(res_df[keep_cols], width="stretch", height=420)
+
+                    # quick links
+                    for _, r in res_df.head(5).iterrows():
+                        st.markdown(f"- [{r.get('title','(no title)')}]({r.get('url','#')}) — sim {r.get('similarity','?')}")
+
+# ------------------------------------------------------------
+# Run App
+# ------------------------------------------------------------
+if __name__ == "__main__":
+    main()

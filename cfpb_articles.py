@@ -104,7 +104,7 @@ def parse_date(entry) -> str:
     return datetime.utcnow().date().isoformat()
 
 
-def load_items(feeds, per_feed=40):
+def load_items(feeds, per_feed=500):
     """Yield tuples (title, link, date, feed_domain)."""
     for feed in feeds:
         try:

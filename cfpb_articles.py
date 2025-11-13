@@ -39,6 +39,18 @@ FRAUD_PATTERNS = {
 FRAUD_REGEX = {k: re.compile(v, re.I) for k, v in FRAUD_PATTERNS.items()}
 
 
+results = []  # Initialize results as an empty list
+df = pd.DataFrame(results)
+print("Raw scraped rows:", len(df))  # 👈 all within feeds
+
+# --- Smart fraud tagging (single block) ---
+if not df.empty:
+    ...
+    df = df[df["fraud_type"] != "not_fraud"].copy()
+    ...
+    print("Fraud-tagged rows:", len(df))  # 👈 after filter
+
+
 def tag_fraud(text: str):
     t = text or ""
     hits = [k for k, rx in FRAUD_REGEX.items() if rx.search(t)]
@@ -104,7 +116,7 @@ def parse_date(entry) -> str:
     return datetime.utcnow().date().isoformat()
 
 
-def load_items(feeds, per_feed=500):
+def load_items(feeds, per_feed=2000):
     """Yield tuples (title, link, date, feed_domain)."""
     for feed in feeds:
         try:
@@ -126,14 +138,14 @@ def scrape_cfpb(limit: int = 25, days: int = 365, feeds=None) -> pd.DataFrame:
     cutoff = datetime.utcnow().date() - timedelta(days=days)
 
     with tqdm(total=limit, desc="CFPB articles", unit="art") as bar:
-        for title, link, date_iso, domain in load_items(feeds, per_feed=max(30, limit)):
+        for title, link, date_iso, domain in load_items(feeds, per_feed=max(1000, limit)):
             try:
                 d = dtparse.parse(date_iso).date()
             except Exception:
                 d = datetime.utcnow().date()
 
-            if d < cutoff:
-                continue
+            #if d < cutoff: 
+                #continue
 
             text = fetch_article_text(link)
             if not text:
@@ -177,10 +189,10 @@ def scrape_cfpb(limit: int = 25, days: int = 365, feeds=None) -> pd.DataFrame:
 
 def main():
     ap = argparse.ArgumentParser(description="Scrape CFPB articles (newsroom/blog/enforcement).")
-    ap.add_argument("--limit", type=int, default=50)
+    ap.add_argument("--limit", type=int, default=250)
     ap.add_argument("--days", type=int, default=365)
     ap.add_argument("--out", type=str, default=None)
-    args = ap.parse_args()
+    args = ap.parse_args() 
 
     df = scrape_cfpb(limit=args.limit, days=args.days)
     print(f"Found {len(df)} CFPB articles.")

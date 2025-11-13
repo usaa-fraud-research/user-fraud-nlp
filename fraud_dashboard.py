@@ -9,7 +9,7 @@ from wordcloud import WordCloud
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from semantic_search import search as semantic_search
-f
+
 # ------------------------------------------------------------
 # Supabase client setup
 # ------------------------------------------------------------

@@ -72,6 +72,9 @@ def upsert_embeddings(rows):
         supabase.table("cfpb_articles").upsert(payload, on_conflict="url").execute()
 
         print(f"✅ Upserted {i + len(chunk)}/{len(rows)} embeddings")
+
+# Only embed rows where embedding is NULL
+supabase.table("cfpb_articles").select("*").is_("embedding", "null")
 # ============================================================
 #  STEP 4 — Run everything together
 # ------------------------------------------------------------

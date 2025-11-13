@@ -1,0 +1,12 @@
+# Local config / secrets
+.env
+
+# Data exports
+data/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Virtualenv
+.venv/

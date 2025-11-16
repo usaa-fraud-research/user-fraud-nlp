@@ -87,7 +87,7 @@ def main():
        st.header("Week 2 — Build Scraper")
        st.write("Goal: Get articles from CFPB source and clean text for analysis.")
        st.write(f"**Total Articles Scraped:** {len(df)}")
-       st.dataframe(df[["title", "date", "url"]].head(10), width="stretch")
+       st.dataframe(df[["title", "date", "url"]].head(10))
 
 
        st.subheader("Example Article Text Preview")
@@ -114,13 +114,13 @@ def main():
        tag_counts = Counter(tag_list)
        kw_df = pd.DataFrame(tag_counts.most_common(10), columns=["Keyword", "Count"])
        st.bar_chart(kw_df.set_index("Keyword"))
-       st.dataframe(kw_df, width="stretch")
+       st.dataframe(kw_df)
 
 
        st.subheader("Word Cloud of Fraud Keywords")
        if tag_list:
            wordcloud = WordCloud(width=800, height=400, background_color="white").generate(" ".join(tag_list))
-           st.image(wordcloud.to_array(), width="stretch")
+           st.image(wordcloud.to_array(), width=800)
 
 
    # ==========================

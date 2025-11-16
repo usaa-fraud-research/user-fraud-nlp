@@ -12,55 +12,73 @@ from tqdm import tqdm
 from urllib.parse import urlparse
 from datetime import datetime, timedelta
 
-# --- Fraud tagging helpers ---
-FRAUD_PATTERNS = {
-    "identity_theft": r"\b(identity\s*theft|stolen\s*identity|synthetic\s*identity)\b",
-    "account_takeover": r"\b(account\s*takeover|ATO|SIM\s*swap|credential\s*stuffing)\b",
-    "check_fraud": r"\b(check\s*fraud|fake\s*check|counterfeit\s*check|check\s*kiting)\b",
-    "card_fraud": r"\b(credit|debit)\s*card\s*(fraud|skimming|cloning|chargeback)\b",
-    "wire_transfer": r"\b(wire\s*fraud|unauthorized\s*wire|zelle|money\s*transfer\s*fraud)\b",
-    "phishing": r"\b(phish(ing|ed)?|smish(ing)?|vish(ing)?)\b",
-    "crypto": r"\b(crypto|bitcoin|ether(eum)?)\b.*\b(fraud|scam|rug)\b",
-    "romance": r"\b(romance\s*scam|catfish(ing)?)\b",
-    "pig_butchering": r"\bpig[-\s]?butcher(ing)?\b",
-    "money_laundering": r"\b(money\s*launder(ing|er|ed)|AML)\b",
+# =====================================================================
+# 1. Enhanced Fraud + Regulatory Violation Tagging
+# =====================================================================
 
-    # 🆕 New subtypes
-    "investment_fraud": r"\b(investment|ponzi|securities)\s*(fraud|scheme|scam)\b",
-    "loan_fraud": r"\b(auto|student|mortgage|loan)\s*(fraud|scam|scheme)\b",
-    "insurance_fraud": r"\b(insurance)\s*(fraud|scam|scheme)\b",
-    "employment_scam": r"\b(job|employment)\s*(scam|scheme|fraud)\b",
-    "charity_scam": r"\b(charity|donation)\s*(scam|scheme|fraud)\b",
+FRAUD_PATTERNS = {
+    # --- True consumer frauds ---
+    "identity_theft": r"\b(identity theft|stolen identity|synthetic identity)\b",
+    "account_takeover": r"\b(account takeover|ATO|SIM swap|credential stuffing)\b",
+    "check_fraud": r"\b(check fraud|fake check|counterfeit check|check kiting)\b",
+    "card_fraud": r"\b(credit|debit) card (fraud|skimming|cloning|chargeback)\b",
+    "wire_transfer": r"\b(wire fraud|unauthorized wire|zelle|money transfer fraud)\b",
+    "phishing": r"\b(phish|phishing|smishing|vishing)\b",
+    "crypto": r"\b(crypto|bitcoin|ethereum).*(fraud|scam|rug)\b",
+    "romance": r"\b(romance scam|catfish)\b",
+    "pig_butchering": r"\bpig[- ]?butcher(ing)?\b",
+    "money_laundering": r"\b(money laundering|laundered|AML)\b",
+
+    # --- New CFPB-specific regulatory violations ---
+    "udap": r"\b(unfair|deceptive|abusive)\b",
+    "reg_e": r"\b(Reg(ulation)? E|Electronic Fund Transfer Act|EFTA|unauthorized transfer|error resolution)\b",
+    "reg_z": r"\b(Reg(ulation)? Z|Truth in Lending Act|billing error)\b",
+    "fcra": r"\b(FCRA|credit reporting|reinvestigate|consumer report|inaccurate information)\b",
+    "debt_collection": r"\b(debt collection|collector|FDCPA|collection lawsuit)\b",
+    "loan_servicing": r"\b(servicing|loan modification|forbearance|deferral)\b",
+    "mortgage_misconduct": r"\b(mortgage|refinance|APR|closing disclosure|loan estimate)\b",
+    "auto_lending": r"\b(auto loan|vehicle financing|dealer markup|indirect auto)\b",
+    "student_loan": r"\b(student loan|servicer|FAFSA|borrower defense)\b",
+    "remittance": r"\b(remittance|exchange rate|transfer fee|prepaid card)\b",
+    "credit_furnishing": r"\b(furnish|furnisher|credit bureau|data furnishing)\b",
+    "payments_app_failure": r"\b(Cash App|peer-to-peer|P2P|dispute investigation)\b",
+    "privacy_data_abuse": r"\b(data (harvesting|sharing|breach)|privacy violation)\b",
 
     # Fallback
-    "generic": r"\b(fraud|scam|deceptive|scheme|scamming)\b",
+    "generic": r"\b(fraud|scam|scheme|deceptive)\b",
 }
 
 FRAUD_REGEX = {k: re.compile(v, re.I) for k, v in FRAUD_PATTERNS.items()}
 
 
-results = []  # Initialize results as an empty list
-df = pd.DataFrame(results)
-print("Raw scraped rows:", len(df))  # 👈 all within feeds
+def classify_violation(hits):
+    """
+    Prioritized classification including CFPB regulatory domains.
+    """
+    priority = [
+        # Highest – true fraud categories
+        "identity_theft", "account_takeover", "card_fraud", "check_fraud",
+        "wire_transfer", "phishing", "crypto", "pig_butchering", "romance",
+        "money_laundering",
 
-# --- Smart fraud tagging (single block) ---
-if not df.empty:
-    ...
-    df = df[df["fraud_type"] != "not_fraud"].copy()
-    ...
-    print("Fraud-tagged rows:", len(df))  # 👈 after filter
+        # Next – CFPB regulatory categories
+        "fcra", "reg_e", "reg_z", "udap", "Debt_collection",
+        "loan_servicing", "mortgage_misconduct", "auto_lending",
+        "student_loan", "credit_furnishing", "payments_app_failure",
+        "privacy_data_abuse", "remittance"
+    ]
+
+    for p in priority:
+        if p in hits:
+            return p
+    return "generic"
 
 
 def tag_fraud(text: str):
     t = text or ""
     hits = [k for k, rx in FRAUD_REGEX.items() if rx.search(t)]
-    priority = [
-        "account_takeover", "identity_theft", "check_fraud", "card_fraud",
-        "wire_transfer", "phishing", "crypto", "pig_butchering",
-        "romance", "money_laundering", "generic"
-    ]
-    primary = next((p for p in priority if p in hits), None)
-    return hits, (primary or "not_fraud")
+    fraud_type = classify_violation(hits)
+    return hits, fraud_type
 
 
 def summarize_lead(txt: str, n: int = 3) -> str:
@@ -68,7 +86,10 @@ def summarize_lead(txt: str, n: int = 3) -> str:
     return " ".join(parts[:n])
 
 
-# --- CFPB feeds (newsroom + blog + enforcement highlights) ---
+# =====================================================================
+# 2. CFPB Feed Scraping + Parsing
+# =====================================================================
+
 CFPB_FEEDS = [
     "https://www.consumerfinance.gov/about-us/newsroom/feed/",
     "https://www.consumerfinance.gov/about-us/blog/feed/",
@@ -89,7 +110,6 @@ def clean_text(html: str) -> str:
 
 
 def fetch_article_text(url: str) -> str:
-    """Fetch a page and return readable text."""
     try:
         r = requests.get(url, headers=HEADERS, timeout=20)
         r.raise_for_status()
@@ -117,7 +137,6 @@ def parse_date(entry) -> str:
 
 
 def load_items(feeds, per_feed=2000):
-    """Yield tuples (title, link, date, feed_domain)."""
     for feed in feeds:
         try:
             d = feedparser.parse(feed)
@@ -125,12 +144,15 @@ def load_items(feeds, per_feed=2000):
             for e in d.entries[:per_feed]:
                 title = (e.get("title") or "").strip()
                 link = (e.get("link") or "").strip()
-                if not title or not link:
-                    continue
-                yield title, link, parse_date(e), domain
+                if title and link:
+                    yield title, link, parse_date(e), domain
         except Exception:
             continue
 
+
+# =====================================================================
+# 3. Scraper + Tagging Pipeline
+# =====================================================================
 
 def scrape_cfpb(limit: int = 25, days: int = 365, feeds=None) -> pd.DataFrame:
     feeds = feeds or CFPB_FEEDS
@@ -144,8 +166,8 @@ def scrape_cfpb(limit: int = 25, days: int = 365, feeds=None) -> pd.DataFrame:
             except Exception:
                 d = datetime.utcnow().date()
 
-            #if d < cutoff: 
-                #continue
+            # if d < cutoff:
+            #     continue
 
             text = fetch_article_text(link)
             if not text:
@@ -171,28 +193,29 @@ def scrape_cfpb(limit: int = 25, days: int = 365, feeds=None) -> pd.DataFrame:
 
     df = pd.DataFrame(results)
 
-    # --- Smart fraud tagging (single block) ---
-    if not df.empty:
-        texts = df["text"].astype(str)
-        tag_hits = texts.apply(lambda x: tag_fraud(x)[0])
-        df["fraud_type"] = texts.apply(lambda x: tag_fraud(x)[1])
-        df = df[df["fraud_type"] != "not_fraud"].copy()
-        df["fraud_tags"] = tag_hits.apply(lambda xs: ", ".join(xs))
-        df["summary"] = texts.apply(summarize_lead)
+    # Apply new classification system
+    texts = df["text"].astype(str)
+    tag_hits = texts.apply(lambda x: tag_fraud(x)[0])
+    df["fraud_type"] = texts.apply(lambda x: tag_fraud(x)[1])
+    df["fraud_tags"] = tag_hits.apply(lambda xs: ", ".join(xs))
+    df["summary"] = texts.apply(summarize_lead)
 
-    # --- Clean and sort ---
-    df = df.drop_duplicates(subset=["title", "url"])
     df["date_dt"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.drop_duplicates(subset=["title", "url"])
     df = df.sort_values("date_dt", ascending=False).drop(columns=["date_dt"])
     return df.head(limit)
 
+
+# =====================================================================
+# 4. CLI Entry Point
+# =====================================================================
 
 def main():
     ap = argparse.ArgumentParser(description="Scrape CFPB articles (newsroom/blog/enforcement).")
     ap.add_argument("--limit", type=int, default=250)
     ap.add_argument("--days", type=int, default=365)
     ap.add_argument("--out", type=str, default=None)
-    args = ap.parse_args() 
+    args = ap.parse_args()
 
     df = scrape_cfpb(limit=args.limit, days=args.days)
     print(f"Found {len(df)} CFPB articles.")

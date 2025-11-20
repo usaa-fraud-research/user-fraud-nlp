@@ -1,16 +1,6 @@
-"""
-ml_train.py
-
-Train a simple ML model on top of OpenAI embeddings stored in Supabase.
-Goal:
-  - Use cfpb_articles.embedding as features
-  - Use fraud_type as label
-  - Save trained model to disk for later scoring (ml_alerts.py)
-"""
-
 import os
-from collections import Counter
 import json
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -19,10 +9,10 @@ from supabase import create_client
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-import joblib  # comes with scikit-learn dependency
+import joblib
 
-MODEL_PATH = "models/fraud_type_logreg.joblib"
-
+# Define the path where the model will be saved
+MODEL_PATH = "models/logistic_regression_model.pkl"
 
 def get_client():
     load_dotenv()
@@ -110,8 +100,6 @@ def fetch_training_data():
     print(f"Unique labels (after filter): {sorted(set(y))}")
 
     return X, y
-
-
 def train_and_save_model():
     """Train a logistic regression model and save it to disk."""
     X, y = fetch_training_data()
@@ -150,4 +138,4 @@ def train_and_save_model():
 
 
 if __name__ == "__main__":
-    train_and_save_model() 
+    train_and_save_model()

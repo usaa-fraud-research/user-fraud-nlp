@@ -1,0 +1,91 @@
+1. Overview of the Model
+
+We trained a Logistic Regression classifier using:
+	•	X (features):
+1536-dimensional OpenAI text embeddings of article text.
+	•	y (labels):
+The fraud category (fraud_type) assigned by our rule-based tagging system.
+
+The goal of the model is to predict the fraud type of a new article based on its vector embedding.
+
+⸻
+
+2. Dataset Summary
+
+After scraping ~75 articles and cleaning the data:
+	•	We dropped labels that had fewer than 2 samples, because the libaray cannot stratify train/test splits with single-example classes.
+	•	Dropped: loan_servicing, student_loan
+	•	Final dataset:
+73 total samples
+1536 embedding features (vector dimension)
+8 fraud labels remaining
+
+This dataset size is extremely small for multi-class classification, and the classes are imbalanced.
+
+⸻
+
+3. Test Results
+
+The test accuracy is:
+Accuracy: ~40%
+
+The classification report shows that:
+	•	generic and fcra have the best performance.
+	•	Many labels (e.g., identity_theft, reg_z, reg_e, udap) show precision = 0, recall = 0.
+
+This happens when the model never predicts those labels on the test set.
+
+⸻
+
+4. Why This Happened
+
+🔸 A) Very Small Dataset
+
+Machine learning models need hundreds to thousands of samples per class for strong performance.
+
+We have:
+	•	73 samples total
+	•	8 labels
+	•	Some labels have only 2–3 samples
+
+This is not enough for the model to learn meaningful patterns.
+
+⸻
+
+🔸 B) Imbalanced Classes
+
+Some fraud types appear much more often than others.
+
+The model learns to predict the most common labels (generic, fcra) and ignores the rare ones.
+
+⸻
+
+🔸 C) No Hyperparameter Tuning
+
+We used a baseline Logistic Regression with default settings.
+
+This is fine for a demo, but it’s not optimized.
+
+⸻
+
+5. How to Interpret the Results
+
+This model is a proof-of-concept only.
+
+What you can truthfully say in your project:
+
+We trained a multi-class fraud classification model using OpenAI embeddings and Logistic Regression.
+Due to the small and imbalanced dataset (73 articles across 8 classes), the model performs well on common categories like generic and fcra, but struggles with rare categories.
+The model demonstrates how embeddings can be used as numeric features for downstream machine learning tasks, but is not yet suitable for production fraud detection.
+For this project, the classifier is used mainly to produce preliminary risk scores, validate feature importance, and demonstrate an end-to-end ML pipeline.
+
+⸻
+
+6. Next Steps (Optional Future Work)
+
+If we want better performance, we should:
+	•	Collect more labeled data (100–200+ per class)
+	•	Reduce the number of fraud types (merge rare labels)
+	•	Try a more powerful classifier (XGBoost, SVM, or fine-tuned BERT)
+	•	Perform hyperparameter tuning
+	•	Use class balancing or class weighting

@@ -13,7 +13,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Path to CSV 
-CSV_PATH = r"C:\Dev\user-fraud-nlp\data\processed\cfpb_articles_20251119_full.csv"
+CSV_PATH = r"C:\Users\alexa\Coding Local Drive\DTSC\DTSC3601\USAA Fraud Project\user-fraud-nlp\data\processed\cfpb_articles_20251119_full.csv"
 
 # Upload function 
 def upload_csv(CSV_PATH):

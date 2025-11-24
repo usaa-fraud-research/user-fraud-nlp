@@ -413,16 +413,29 @@ def main():
                         f"[Read More]({r['url']})"
                     )
 
+                # ==========================
+        # 🔥 Top 3 Trending Fraud Types (Year-Aware)
         # ==========================
-        # 🔥 This Year's Most Trending Fraud Type
-        # ==========================
-        st.subheader("🔥 This Year's Most Trending Fraud Type")
+        st.subheader("🔥 Top 3 Trending Fraud Types")
 
-        current_year = pd.Timestamp.now().year
-        year_df = df[df["date"].dt.year == current_year]
+        # Use the selected year if enabled; otherwise fallback to current year
+        selected_year = year if enable_year and year else pd.Timestamp.now().year
+
+        year_df = df[df["date"].dt.year == selected_year]
+
+        FRAUD_EXPLANATIONS = {
+            "fcra": "Fair Credit Reporting Act — protects consumers from inaccurate or unfair credit reporting.",
+            "udap": "Unfair, Deceptive, or Abusive Acts or Practices — broad deceptive financial behavior.",
+            "reg_e": "Regulation E — protects consumers from unauthorized electronic funds transfers.",
+            "mortgage_misconduct": "Violations related to mortgage servicing, payments, escrow, or disclosures.",
+            "loan_servicing": "Issues involving loan servicing, payments, or servicing errors.",
+            "identity_theft": "Fraud involving stolen personal information.",
+            "debt_collection": "Illegal or abusive debt collection practices.",
+            "generic": "General fraud issue not classified under a specific law or category."
+        }
 
         if year_df.empty:
-            st.warning(f"No fraud articles found for {current_year}.")
+            st.warning(f"No fraud articles found for {selected_year}.")
         else:
             top_year = (
                 year_df["fraud_type"]
@@ -431,41 +444,60 @@ def main():
             )
             top_year.columns = ["fraud_type", "count"]
 
-            most_common_type = top_year.iloc[0]["fraud_type"]
-            count_year = top_year.iloc[0]["count"]
+            top3 = top_year.head(3)
 
-            st.markdown(
-                f"""
-                <div style='
-                    display:flex;
-                    align-items:center;
-                    background-color:#0d1117;
-                    border:1px solid #30363d;
-                    border-radius:8px;
-                    padding:10px 16px;
-                    margin-top:12px;
-                '>
-                    <span style='margin-right:10px;font-size:1.4em;'>🔥</span>
-                    <span style='font-size:1.1em;color:#79c0ff;font-weight:600'>
-                        This year's trending fraud type:
-                        <b style='color:#58a6ff'>
-                            {most_common_type.replace("_"," ").title()}
-                        </b>
-                        ({count_year} total mentions this year)
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"### 📆 Showing trends for **{selected_year}**")
+            st.markdown("---")
 
+            # Clickable top 3
+            for _, row in top3.iterrows():
+                ftype = row["fraud_type"]
+                count = row["count"]
 
+                explanation = FRAUD_EXPLANATIONS.get(ftype, "No description available.")
 
-        st.subheader("📰 Recent Fraud Articles")
-        for _, row in filtered_df.head(5).iterrows():
+                if st.button(f"{ftype.upper()} — {count} mentions", key=f"type_{ftype}_{selected_year}"):
+                    st.query_params["selected_type"] = ftype
+                    st.query_params["selected_year"] = selected_year
+
+                st.caption(explanation)
+                st.markdown("---")
+
+        # ==========================
+        # 📰 Filtered Article List (by click + year)
+        # ==========================
+        st.subheader("📰 Filtered Articles")
+
+        selected_type = st.query_params.get("selected_type", None)
+        selected_year_param = st.query_params.get("selected_year", None)
+
+        # Validate year param from URL
+        try:
+            selected_year_param = int(selected_year_param) if selected_year_param else None
+        except:
+            selected_year_param = None
+
+        # Determine the final year to show
+        article_year = selected_year_param or selected_year
+
+        # Filter base dataset to that year
+        article_df = df[df["date"].dt.year == article_year]
+
+        # If a fraud type is selected, filter further
+        if selected_type:
+            article_df = article_df[article_df["fraud_type"] == selected_type]
+            st.info(f"Showing **{selected_type.upper()}** articles for **{article_year}**")
+        else:
+            st.info(f"Showing articles for **{article_year}**")
+
+        # Display articles
+        for _, row in article_df.head(10).iterrows():
             st.markdown(
                 f"**{row['title']}** — *{row['fraud_type']}* ({row['date'].date()})  \n"
-                f"{row.get('summary','')}  \n[Read More]({row['url']})"
+                f"{row.get('summary','')}  \n"
+                f"[Read More]({row['url']})"
             )
+
 
         csv = filtered_df.to_csv(index=False).encode("utf-8")
         st.download_button(

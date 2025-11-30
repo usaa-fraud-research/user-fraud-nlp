@@ -14,6 +14,18 @@ from supabase import create_client, Client
 from semantic_search import search as semantic_search
 import streamlit.components.v1 as components
 
+# Preset semantic search scenarios (high-level questions)
+SEMANTIC_PRESETS = {
+    "🔁 Zelle / payment app scams": "unauthorized zelle or payment app transfers and how the bank resolved them",
+    "🪪 Identity theft & account takeover": "identity theft on credit cards or bank accounts and how it was resolved",
+    "🏠 Mortgage & home lending issues": "mortgage servicing errors, foreclosure, escrow problems, misleading home loans",
+    "🎓 Student loan servicing problems": "student loan servicing issues, misapplied payments, and forgiveness confusion",
+    "📞 Debt collection harassment": "aggressive or illegal debt collection tactics and consumer protections",
+    "💳 Credit reporting errors (FCRA)": "credit report errors, disputes under FCRA, and correction outcomes",
+    "🌍 Remittances / international transfers": "remittance transfer problems, high fees, or lost international payments",
+    "⚖️ UDAP / deceptive practices": "unfair, deceptive, or abusive acts and practices in banking or lending",
+}
+
 
 # ------------------------------------------------------------
 # Supabase client setup
@@ -506,40 +518,85 @@ def main():
             file_name="fraud_analysis_filtered.csv",
         )
 
-    # ==========================
+        # ==========================
     # SEMANTIC SEARCH (embeddings)
     # ==========================
     with semtab:
-        st.header("Semantic Search — Embedding Powered")
+        st.header("🔎 Semantic Search — Embeddings + pgvector")
         st.write(
-            "Type a natural-language query. We embed it with OpenAI and run pgvector similarity in Supabase."
+            "Use semantic search to find CFPB articles that *mean* the same thing "
+            "as your question, even if they don’t use the exact same words."
         )
 
-        colA, colB = st.columns([3, 1])
-        query = colA.text_input(
-            "Search query", placeholder="e.g., zelle unauthorized transfer"
-        )
-        top_k = colB.slider("Top K", 5, 40, 10, step=5)
+        # -------------------------------
+        # 1️⃣ Pick scenario or custom query
+        # -------------------------------
+        st.subheader("1️⃣ Pick a scenario or ask your own question")
 
-        colC, colD = st.columns([1, 1])
-        threshold = colC.number_input(
-            "Min similarity (0–1)", 0.0, 1.0, 0.55, 0.01
+        colA, colB = st.columns([2, 3])
+
+        # Left: dropdown of preset scenarios
+        preset_label = colA.selectbox(
+            "Choose a preset scenario",
+            options=["(Custom free-text query)"] + list(SEMANTIC_PRESETS.keys()),
+            index=0,
         )
-        enable_year = colD.toggle("Filter by year", value=False)
-        year = None
-        if enable_year:
-            default_year = 2020
-            year = colD.number_input(
-                "Year", min_value=1900, max_value=2100, value=default_year, step=1
+
+        # Right: either auto-filled query or user text input
+        if preset_label == "(Custom free-text query)":
+            query = colB.text_input(
+                "Describe what you want to search for",
+                placeholder="e.g., zelle unauthorized transfer not refunded",
             )
+            st.caption("✏️ Custom mode — type any natural language question.")
+        else:
+            query = SEMANTIC_PRESETS[preset_label]
+            colB.markdown(
+                "**Query text used for embeddings:**  \n"
+                f"```text\n{query}\n```"
+            )
+            st.caption("✅ Using a preset scenario. Switch back to custom if you want to type your own.")
 
-        keyword = st.text_input("Optional keyword filter (title contains)")
+        # -------------------------------
+        # 2️⃣ Tweak search settings
+        # -------------------------------
+        st.subheader("2️⃣ Tune search settings (optional)")
+        colC, colD, colE = st.columns([1, 1, 2])
 
-        if st.button("Run semantic search", type="primary"):
+        top_k = colC.slider("Top K results", 5, 50, 10, step=5)
+        threshold = colD.number_input(
+            "Min similarity (0–1)",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.55,
+            step=0.01,
+        )
+
+        year_input = colE.number_input(
+            "Filter by year (0 = no filter)",
+            min_value=0,
+            max_value=2100,
+            value=0,
+            step=1,
+        )
+        year = int(year_input) if year_input != 0 else None
+
+        keyword = st.text_input(
+            "Optional keyword filter (title contains)",
+            placeholder="e.g., Zelle, mortgage, student loan (or leave blank)",
+        )
+
+        # -------------------------------
+        # 3️⃣ Run search
+        # -------------------------------
+        st.subheader("3️⃣ Run semantic search")
+        run_clicked = st.button("🚀 Search similar CFPB articles", type="primary")
+
+        if run_clicked:
             if not query.strip():
-                st.warning("Please enter a query.")
+                st.warning("Please enter a query or choose a preset first.")
             else:
-                with st.spinner("Searching…"):
+                with st.spinner("Embedding query and running pgvector search in Supabase…"):
                     try:
                         results = run_cached_semantic(
                             query=query.strip(),
@@ -554,14 +611,17 @@ def main():
 
                 if not results:
                     st.info(
-                        "No matches (try lowering similarity threshold or removing filters)."
+                        "No matches (try lowering the similarity threshold or removing filters)."
                     )
                 else:
                     res_df = pd.DataFrame(results)
+
+                    # Nicely format similarity if present
                     if "similarity" in res_df.columns:
                         res_df["similarity"] = res_df["similarity"].map(
                             lambda x: round(float(x), 3)
                         )
+
                     keep_cols = [
                         c
                         for c in [
@@ -574,19 +634,20 @@ def main():
                         ]
                         if c in res_df.columns
                     ]
-                    st.success(f"Found {len(res_df)} matches")
+
+                    st.success(f"✅ Found {len(res_df)} matching articles")
                     st.dataframe(
                         res_df[keep_cols],
-                        use_container_width=True,
+                        width="stretch",
                         height=420,
                     )
 
+                    st.markdown("#### 🔗 Quick links (top 5)")
                     for _, r in res_df.head(5).iterrows():
                         st.markdown(
                             f"- [{r.get('title','(no title)')}]({r.get('url','#')}) "
-                            f"— sim {r.get('similarity','?')}"
+                            f"— `similarity = {r.get('similarity','?')}`"
                         )
-
 
 # ------------------------------------------------------------
 # Run App

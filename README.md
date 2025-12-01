@@ -19,14 +19,8 @@ Run the dashboard using the command: uv run streamlit run fraud_dashboard.py
 
 ## 3. Visuals / Application Design
 System Architecture (Mermaid Diagram):
-flowchart TD  
-A[CFPB Scraper] --> B[Supabase: cfpb_articles]  
-B --> C[OpenAI Embeddings (1536-dim)]  
-C --> D[pgvector Similarity Search]  
-B --> E[SVM Classifier]  
-E --> F[Fraud Predictions]  
-D --> G[Streamlit Dashboard]  
-F --> G  
+<img width="425" height="550" alt="Screenshot 2025-12-01 at 1 19 53 PM" src="https://github.com/user-attachments/assets/5de1e335-b6a4-4c52-a106-24a62b20444b" />
+
 
 Screenshots 
 Dashboard Home 

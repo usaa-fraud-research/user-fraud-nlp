@@ -306,33 +306,62 @@ def main():
             )
             st.plotly_chart(fig_ft, use_container_width=True)
 
+        st.subheader("Quarterly Articles by Fraud Keywords (stacked)")
+        if not filtered_df.empty:
+            tmp = filtered_df.copy()
+            # require date and tags
+            tmp = tmp.dropna(subset=["date"])
+            # create quarter label
+            tmp["quarter"] = tmp["date"].dt.to_period("Q").astype(str)
 
-            quarter_order = sorted(agg["quarter"].unique(), key=lambda q: pd.Period(q))
+            # explode comma-separated fraud_tags into rows
+            tmp["fraud_tags"] = tmp["fraud_tags"].fillna("").astype(str)
+            tmp["fraud_tags"] = tmp["fraud_tags"].str.split(",")
+            tmp = tmp.explode("fraud_tags")
+            tmp["fraud_tags"] = tmp["fraud_tags"].str.strip().replace("", np.nan)
+            tmp = tmp.dropna(subset=["fraud_tags"])
 
-                # pivot so each tag becomes a column (one series per tag) and reindex by ordered quarters
-            pivot = agg.pivot(index="quarter", columns="tag", values="count").fillna(0)
-            pivot = pivot.reindex(quarter_order).fillna(0)
+            if tmp.empty:
+                st.info("No tagged articles available for quarterly breakdown.")
+            else:
+                # keep top N tags, group the rest into "Other"                    
+                top_n = 8
+                top_tags = tmp["fraud_tags"].value_counts().nlargest(top_n).index.tolist()
+                tmp["tag"] = tmp["fraud_tags"].where(tmp["fraud_tags"].isin(top_tags), other="Other")
 
-                # build a stacked bar using graph_objects to force stacking
-            fig_q = go.Figure()
-            for tag in pivot.columns:
-                fig_q.add_trace(
-                    go.Bar(
-                        name=str(tag),
-                        x=pivot.index.tolist(),
-                        y=pivot[tag].tolist(),
-                    )
+                # aggregate counts by quarter + tag
+                agg = (
+                    tmp.groupby(["quarter", "tag"])
+                    .size()
+                    .reset_index(name="count")
                 )
 
-            fig_q.update_layout(
-                barmode="stack",
-                title="Articles per Quarter by Fraud Keyword / Phrase",
-                xaxis_title="Quarter",
-                yaxis_title="Number of Articles",
-                legend_title="Keyword / Phrase",
-            )
+                quarter_order = sorted(agg["quarter"].unique(), key=lambda q: pd.Period(q))
 
-            st.plotly_chart(fig_q, use_container_width=True)
+                        # pivot so each tag becomes a column (one series per tag) and reindex by ordered quarters
+                pivot = agg.pivot(index="quarter", columns="tag", values="count").fillna(0)
+                pivot = pivot.reindex(quarter_order).fillna(0)
+
+                        # build a stacked bar using graph_objects to force stacking
+                fig_q = go.Figure()
+                for tag in pivot.columns:
+                    fig_q.add_trace(
+                        go.Bar(
+                            name=str(tag),
+                            x=pivot.index.tolist(),
+                            y=pivot[tag].tolist(),
+                        )
+                    )
+
+                fig_q.update_layout(
+                    barmode="stack",
+                    title="Articles per Quarter by Fraud Keyword / Phrase",
+                    xaxis_title="Quarter",
+                    yaxis_title="Number of Articles",
+                    legend_title="Keyword / Phrase",
+                )
+
+                st.plotly_chart(fig_q, use_container_width=True)
 
         # ==========================
         # GitHub-Style Fraud Activity Heatmap (dynamic by selected year)

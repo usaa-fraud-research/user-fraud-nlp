@@ -6,13 +6,14 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
-from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import joblib
 
-# Define the path where the model will be saved
-MODEL_PATH = "models/logistic_regression_model.pkl"
+# Relative path so it works locally AND in Modal
+MODEL_PATH = "models/svm_fraud_type.joblib"
+
 
 def get_client():
     load_dotenv()
@@ -29,6 +30,7 @@ def _parse_embedding(e):
 
     Handles:
       - already-a-list
+      - numpy array
       - JSON string like "[0.1, 0.2, ...]"
       - plain string "0.1,0.2,..." as fallback
     """
@@ -39,7 +41,6 @@ def _parse_embedding(e):
     if isinstance(e, str):
         s = e.strip()
         try:
-            # try JSON first
             val = json.loads(s)
             if isinstance(val, list):
                 return val
@@ -51,7 +52,7 @@ def _parse_embedding(e):
         return [float(x) for x in s.split(",") if x.strip()]
 
     raise ValueError(f"Unsupported embedding type: {type(e)}")
-    
+
 
 def fetch_training_data():
     """
@@ -60,7 +61,7 @@ def fetch_training_data():
     - require embedding IS NOT NULL
     - drop rows where fraud_type is null or 'not_fraud'
     - drop labels with < 2 samples (cannot be stratified)
-    - PARSE embeddings from strings -> list[float]
+    - parse embeddings into list[float]
     """
     sb = get_client()
     res = (
@@ -80,7 +81,7 @@ def fetch_training_data():
     df = df.dropna(subset=["fraud_type"])
     df = df[df["fraud_type"] != "not_fraud"].copy()
 
-    # drop rare labels
+    # drop rare labels (< 2 samples)
     counts = Counter(df["fraud_type"])
     keep_labels = {label for label, c in counts.items() if c >= 2}
     dropped = [label for label, c in counts.items() if c < 2]
@@ -91,7 +92,7 @@ def fetch_training_data():
     if df.empty:
         raise RuntimeError("After dropping rare labels, no data left to train on.")
 
-    # 🔑 parse embedding strings into real vectors
+    # parse embedding strings into real vectors
     df["embedding_parsed"] = df["embedding"].apply(_parse_embedding)
     X = np.vstack(df["embedding_parsed"].to_list())  # shape: (N, 1536)
     y = df["fraud_type"].astype(str).values
@@ -100,15 +101,16 @@ def fetch_training_data():
     print(f"Unique labels (after filter): {sorted(set(y))}")
 
     return X, y
+
+
 def train_and_save_model():
-    """Train a logistic regression model and save it to disk."""
+    """Train an SVM model and save it to disk."""
     X, y = fetch_training_data()
 
-    # If there is only 1 label left, just fit on all data (no test split)
     unique_labels = np.unique(y)
     if len(unique_labels) == 1:
         print("Only one label present; training on full data (no test split).")
-        clf = LogisticRegression(max_iter=1000)
+        clf = LinearSVC(class_weight="balanced", max_iter=5000)
         clf.fit(X, y)
     else:
         X_train, X_test, y_train, y_test = train_test_split(
@@ -116,25 +118,24 @@ def train_and_save_model():
             y,
             test_size=0.2,
             random_state=42,
-            stratify=y,  # safe now because min class count >= 2
+            stratify=y,
         )
 
-        clf = LogisticRegression(
-            max_iter=1000,
-            multi_class="auto",
-            n_jobs=-1,
+        clf = LinearSVC(
+            class_weight="balanced",
+            max_iter=5000,
         )
         clf.fit(X_train, y_train)
 
         # Evaluate
         y_pred = clf.predict(X_test)
-        print("\n=== Classification report (fraud_type) ===")
+        print("\n=== Classification report (fraud_type, SVM) ===")
         print(classification_report(y_test, y_pred))
 
     # Ensure models/ directory exists
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump(clf, MODEL_PATH)
-    print(f"\n✅ Saved model → {MODEL_PATH}")
+    print(f"\n✅ Saved SVM model → {MODEL_PATH}")
 
 
 if __name__ == "__main__":

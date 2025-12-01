@@ -31,6 +31,7 @@ F --> G
 Screenshots / UI Mockups (placeholders to be replaced):  
 Dashboard Home 
 ![alt text](image-1.png)
+![alt text](image-4.png)
 Semantic Search Page 
 ![alt text](image.png) 
 ML Alerts Panel 

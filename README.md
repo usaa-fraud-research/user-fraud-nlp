@@ -2,6 +2,10 @@
 
 Fraud Detection • Semantic Search • Streamlit Dashboard • Supabase Vector DB
 
+Team Members:
+Carlin Crawford • Gustave Mensah • Alex Stephenson • Darren Summerlee
+
+
 A full NLP pipeline that scrapes CFPB articles, detects fraud patterns, generates embeddings, performs semantic search, runs ML fraud classification, and visualizes everything inside a professional Streamlit dashboard.
 
 🚀 Quick Start

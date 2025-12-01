@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import plotly.graph_objects as go
 from collections import Counter
 from wordcloud import WordCloud
 from dotenv import load_dotenv
@@ -304,6 +305,34 @@ def main():
                 title="Fraud Type Frequency",
             )
             st.plotly_chart(fig_ft, use_container_width=True)
+
+
+            quarter_order = sorted(agg["quarter"].unique(), key=lambda q: pd.Period(q))
+
+                # pivot so each tag becomes a column (one series per tag) and reindex by ordered quarters
+            pivot = agg.pivot(index="quarter", columns="tag", values="count").fillna(0)
+            pivot = pivot.reindex(quarter_order).fillna(0)
+
+                # build a stacked bar using graph_objects to force stacking
+            fig_q = go.Figure()
+            for tag in pivot.columns:
+                fig_q.add_trace(
+                    go.Bar(
+                        name=str(tag),
+                        x=pivot.index.tolist(),
+                        y=pivot[tag].tolist(),
+                    )
+                )
+
+            fig_q.update_layout(
+                barmode="stack",
+                title="Articles per Quarter by Fraud Keyword / Phrase",
+                xaxis_title="Quarter",
+                yaxis_title="Number of Articles",
+                legend_title="Keyword / Phrase",
+            )
+
+            st.plotly_chart(fig_q, use_container_width=True)
 
         # ==========================
         # GitHub-Style Fraud Activity Heatmap (dynamic by selected year)

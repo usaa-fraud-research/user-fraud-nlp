@@ -33,7 +33,12 @@ Dashboard Home
 ![alt text](image-1.png)
 Semantic Search Page 
 ![alt text](image.png) 
-ML Alerts Panel  
+ML Alerts Panel 
+![alt text](image-2.png)
+Fraud type
+![alt text](image-3.png)
+
+
 
 Folder Structure:  
 user-fraud-nlp/  

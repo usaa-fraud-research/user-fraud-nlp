@@ -518,7 +518,7 @@ def main():
             file_name="fraud_analysis_filtered.csv",
         )
 
-       # ==========================
+           # ==========================
     # SEMANTIC SEARCH (embeddings)
     # ==========================
     with semtab:
@@ -528,18 +528,43 @@ def main():
             "even if they use different words."
         )
 
-        # 1. Scenario / query
+        # 1️⃣ Choose a preset or type your own question
         st.markdown("### 1️⃣ Pick a scenario or ask your own question")
 
         colA, colB = st.columns([3, 1])
-        query = colA.text_input(
-            "Search query",
+
+        # Preset dropdown
+        preset_label = colA.selectbox(
+            "Common fraud scenarios",
+            options=["(None — I will type my own)"] + list(SEMANTIC_PRESETS.keys()),
+            help="Pick a high-level scenario to auto-fill the search intent.",
+        )
+
+        preset_query = None
+        if preset_label != "(None — I will type my own)":
+            preset_query = SEMANTIC_PRESETS[preset_label]
+
+        # Custom query overrides preset if filled
+        custom_query = colA.text_input(
+            "Or type your own question",
             placeholder="e.g., unauthorized Zelle transfer dispute",
             help=(
                 "This text is embedded with OpenAI and compared to all CFPB article embeddings. "
-                "The closer the match, the higher the similarity score."
+                "If you type something here, it overrides the preset scenario above."
             ),
         )
+
+        # Decide which query to actually send to the model
+        if custom_query.strip():
+            effective_query = custom_query.strip()
+            source_label = "Using your custom question"
+        elif preset_query:
+            effective_query = preset_query
+            source_label = f"Using preset scenario: {preset_label}"
+        else:
+            effective_query = ""
+            source_label = "No query selected yet"
+
         top_k = colB.slider(
             "Top K results",
             5,
@@ -549,7 +574,9 @@ def main():
             help="How many top-ranked matches to return (sorted by semantic similarity).",
         )
 
-        # 2. Advanced search settings
+        st.caption(f"🔍 {source_label}")
+
+        # 2️⃣ Advanced search settings
         st.markdown("### 2️⃣ Tune search settings (optional)")
 
         colC, colD = st.columns([1, 1])
@@ -595,16 +622,19 @@ def main():
             ),
         )
 
+        # 3️⃣ Run search
         st.markdown("### 3️⃣ Run search")
 
         if st.button("Run semantic search", type="primary"):
-            if not query.strip():
-                st.warning("Please enter a query.")
+            if not effective_query:
+                st.warning(
+                    "Please either pick a scenario from the dropdown **or** type your own question."
+                )
             else:
                 with st.spinner("Searching…"):
                     try:
                         results = run_cached_semantic(
-                            query=query.strip(),
+                            query=effective_query,
                             top_k=top_k,
                             threshold=threshold,
                             year=year,

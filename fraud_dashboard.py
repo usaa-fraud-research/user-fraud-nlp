@@ -129,9 +129,9 @@ def main():
             ml_available = False
     week2, week3, week4, semtab = st.tabs(
         [
-            "📄 Week 2: Scraper",
-            "🔍 Week 3: Fraud Detection",
-            "📊 Week 4: Analysis",
+            "📄 Part 1: Scraper",
+            "🔍 Part 2: Fraud Detection",
+            "📊 Part 3: Analysis",
             "🔎 Semantic Search",
         ]
     )

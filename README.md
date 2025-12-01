@@ -29,8 +29,10 @@ D --> G[Streamlit Dashboard]
 F --> G  
 
 Screenshots / UI Mockups (placeholders to be replaced):  
-Dashboard Home  
-Semantic Search Page  
+Dashboard Home 
+![alt text](image-1.png)
+Semantic Search Page 
+![alt text](image.png) 
 ML Alerts Panel  
 
 Folder Structure:  

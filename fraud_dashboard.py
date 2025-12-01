@@ -13,7 +13,12 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from semantic_search import search as semantic_search
 import streamlit.components.v1 as components 
-from joblib import load 
+from joblib import load
+from ml_train import _parse_embedding  # reuse the same logic
+import numpy as np 
+
+
+
 
 # Preset semantic search scenarios (high-level questions)
 SEMANTIC_PRESETS = {
@@ -27,6 +32,14 @@ SEMANTIC_PRESETS = {
     "⚖️ UDAP / deceptive practices": "unfair, deceptive, or abusive acts and practices in banking or lending",
 }
 
+MODEL_PATH = "/Users/gustave/Desktop/untitled folder 2/usaa_nlp/user-fraud-nlp/models/svm_fraud_type.joblib"
+@st.cache_resource
+def load_ml_model():
+    try:
+        return load(MODEL_PATH)
+    except Exception as e:
+        st.warning(f"ML model could not be loaded: {e}")
+        return None
 
 # ------------------------------------------------------------
 # Supabase client setup
@@ -87,18 +100,33 @@ def main():
         st.error("❌ No data found in Supabase. Please run scraper + upload first.")
         return
     st.success(f"✅ Loaded {len(df)} CFPB articles") 
-    # --- Simple ML predictions (if embeddings are available) ---
+        # --------------------------------------------------------
+    # Attach ML predictions (logistic regression on embeddings)
+    # --------------------------------------------------------
+    ml_model = load_ml_model()
     ml_available = False
-    if "embedding" in df.columns:
+    df["ml_pred"] = None  # default
+
+    if ml_model is not None and "embedding" in df.columns:
         try:
-            model = load_ml_model()
-            # embeddings come back as list -> stack into matrix
-            emb_matrix = np.vstack(df["embedding"].values)
-            df["ml_pred"] = model.predict(emb_matrix)
-            ml_available = True
+            # Only use rows that actually have embeddings
+            emb_df = df[df["embedding"].notna()].copy()
+            if not emb_df.empty:
+                # Parse each embedding from string/JSON -> list[float]
+                emb_df["embedding_parsed"] = emb_df["embedding"].apply(_parse_embedding)
+
+                # Stack into a (N, 1536) numpy array
+                X_all = np.vstack(emb_df["embedding_parsed"].to_list()).astype(float)
+
+                # Run model prediction
+                y_pred_all = ml_model.predict(X_all)
+
+                # Write predictions back to the main df
+                df.loc[emb_df.index, "ml_pred"] = y_pred_all
+                ml_available = True
         except Exception as e:
             st.warning(f"ML model could not run: {e}")
-
+            ml_available = False
     week2, week3, week4, semtab = st.tabs(
         [
             "📄 Week 2: Scraper",

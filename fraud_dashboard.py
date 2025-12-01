@@ -12,7 +12,8 @@ from wordcloud import WordCloud
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from semantic_search import search as semantic_search
-import streamlit.components.v1 as components
+import streamlit.components.v1 as components 
+from joblib import load 
 
 # Preset semantic search scenarios (high-level questions)
 SEMANTIC_PRESETS = {
@@ -66,6 +67,12 @@ def run_cached_semantic(query, top_k, threshold, year, keyword):
         year=year,
         keyword=keyword,
     )
+@st.cache_resource
+def load_ml_model():
+    """Load the trained fraud-type classifier (SVM or logistic)."""
+    model_path = "models/svm_fraud_type.joblib"  # or your actual filename
+    return load(model_path)
+
 
 
 # ------------------------------------------------------------
@@ -79,7 +86,18 @@ def main():
     if df.empty:
         st.error("❌ No data found in Supabase. Please run scraper + upload first.")
         return
-    st.success(f"✅ Loaded {len(df)} CFPB articles")
+    st.success(f"✅ Loaded {len(df)} CFPB articles") 
+    # --- Simple ML predictions (if embeddings are available) ---
+    ml_available = False
+    if "embedding" in df.columns:
+        try:
+            model = load_ml_model()
+            # embeddings come back as list -> stack into matrix
+            emb_matrix = np.vstack(df["embedding"].values)
+            df["ml_pred"] = model.predict(emb_matrix)
+            ml_available = True
+        except Exception as e:
+            st.warning(f"ML model could not run: {e}")
 
     week2, week3, week4, semtab = st.tabs(
         [
@@ -143,6 +161,33 @@ def main():
                 width=800, height=400, background_color="white"
             ).generate(" ".join(tag_list))
             st.image(wordcloud.to_array(), width=800)
+                # ==========================
+        # 🔔 Simple ML Alerts
+        # ==========================
+        st.subheader("🔔 ML Alerts (high-priority fraud types)")
+
+        if not ml_available:
+            st.caption("ML model not available or no embeddings column in Supabase.")
+        else:
+            HIGH_PRIORITY = ["reg_e", "identity_theft", "wire_transfer",
+                             "crypto", "udap"]
+
+            alerts = (
+                df[df["ml_pred"].isin(HIGH_PRIORITY)]
+                .sort_values("date", ascending=False)
+                .head(10)
+            )
+
+            if alerts.empty:
+                st.info("No high-priority ML alerts right now.")
+            else:
+                for _, row in alerts.iterrows():
+                    st.markdown(
+                        f"**{row['title']}** — *{row['ml_pred']}* "
+                        f"({row['date'].date()})  \n"
+                        f"{row.get('summary','')}  \n"
+                        f"[Read more]({row['url']})"
+                    )
 
     # ==========================
     # WEEK 4 — ANALYSIS

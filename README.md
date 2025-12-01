@@ -1,202 +1,95 @@
-🛡️ CFPB Fraud Intelligence Dashboard
+# CFPB Fraud Intelligence Dashboard
+Tagline: A dashboard and NLP pipeline for analyzing fraud themes in CFPB articles  
+Team Members: Carlin Crawford, Gustave Mensah, Alex Stephenson, Darren Summerlee
 
-Fraud Detection • Semantic Search • Streamlit Dashboard • Supabase Vector DB
+## 1. One-Sentence Project Summary
+This project builds a full workflow that scrapes CFPB articles, identifies fraud-related patterns using NLP and embeddings, and presents the results in an interactive Streamlit dashboard.
 
-Team Members:
-Carlin Crawford • Gustave Mensah • Alex Stephenson • Darren Summerlee
+---
 
+## 2. Quick Start
+Install dependencies using the command: uv sync  
+Create a .env file with the following variables:  
+SUPABASE_URL=your-url  
+SUPABASE_KEY=your-key  
+OPENAI_API_KEY=your-openai-key  
+Run the dashboard using the command: uv run streamlit run fraud_dashboard.py
 
-A full NLP pipeline that scrapes CFPB articles, detects fraud patterns, generates embeddings, performs semantic search, runs ML fraud classification, and visualizes everything inside a professional Streamlit dashboard.
+---
 
-🚀 Quick Start
+## 3. Visuals / Application Design
+System Architecture (Mermaid Diagram):
+flowchart TD  
+A[CFPB Scraper] --> B[Supabase: cfpb_articles]  
+B --> C[OpenAI Embeddings (1536-dim)]  
+C --> D[pgvector Similarity Search]  
+B --> E[SVM Classifier]  
+E --> F[Fraud Predictions]  
+D --> G[Streamlit Dashboard]  
+F --> G  
 
-1️⃣ Install Dependencies
-    uv sync
+Screenshots / UI Mockups (placeholders to be replaced):  
+Dashboard Home  
+Semantic Search Page  
+ML Alerts Panel  
 
-2️⃣ Create a .env File
-    SUPABASE_URL=your-url
-    SUPABASE_KEY=your-key
-    OPENAI_API_KEY=your-openai-key
-
-🏗️ System Architecture
-   flowchart TD
-    A[CFPB Scraper] --> B[Supabase: cfpb_articles]
-    B --> C[OpenAI Embeddings\n1536-dim]
-    C --> D[pgvector Similarity Search]
-    B --> E[SVM ]
-    E --> F[Fraud Predictions]
-    D --> G[Streamlit Dashboard]
-    F --> G
-
-🖥️ Screenshots & UI (Placeholders — Replace in repo)
-
-Dashboard Home
-Semantic Search Page
-ML Alerts
-
-user-fraud-nlp/
-│
-├── cfpb_articles.py        # Scraper for CFPB Newsroom/Blog/Enforcement
-├── articles_supabase.py    # Upload scraped data → Supabase
-├── llm_embedding.py        # Generate + store embeddings
-├── semantic_search.py      # Cached semantic search using pgvector
-├── ml_train.py             # Train ML fraud classifier (LogReg/SVM)
-├── fraud_dashboard.py      # Streamlit dashboard
-│
-├── models/
-│   ├── logistic_regression_model.pkl
-│   └── fraud_type_svm.joblib
-│
-├── data/                   # (ignored) scraped CSV files
-├── txt/                    # Summaries and text dumps
-│
-├── .env.example
-├── .gitignore
-├── pyproject.toml          # Dependencies for uv
+Folder Structure:  
+user-fraud-nlp/  
+├── cfpb_articles.py  
+├── articles_supabase.py  
+├── llm_embedding.py  
+├── semantic_search.py  
+├── ml_train.py  
+├── fraud_dashboard.py  
+├── models/  
+│   ├── logistic_regression_model.pkl  
+│   └── fraud_type_svm.joblib  
+├── data/  
+├── txt/  
+├── .env.example  
+├── .gitignore  
+├── pyproject.toml  
 └── uv.lock
 
-This project automates the entire pipeline from raw CFPB articles → fraud insights, combining scraping, NLP, vector search, and machine learning.
+## 3.1 What Was Built
+The scraper collects articles from CFPB Newsroom, CFPB Blog, and CFPB Enforcement Actions. Each record includes title, date, source, text, and URL.  
 
-Example Raw Article Snippet: The Bureau filed a complaint alleging unauthorized transfers via Zelle...
+Example raw snippet:  
+The Bureau filed a complaint alleging unauthorized transfers via Zelle...
 
-Example Transformed Output:
-{
-  "fraud_type": "reg_e",
-  "fraud_tags": ["unauthorized_transfer", "zelle_fraud"],
-  "summary": "Unauthorized account withdrawals via payment app."
+Example transformed output:  
+{  
+"fraud_type": "reg_e",  
+"fraud_tags": ["unauthorized_transfer", "zelle_fraud"],  
+"summary": "Unauthorized account withdrawals via payment app."  
 }
 
-Embedding Example (shortened):
+Embeddings are created using the text-embedding-3-small model (1536 dimensions) and stored in Supabase’s pgvector column. Example embedding call:  
+embedding = client.embeddings.create(model="text-embedding-3-small", input=text).data[0].embedding  
 
-embedding = client.embeddings.create(
-    model="text-embedding-3-small",
-    input=text
-).data[0].embedding
+The ML classifier uses a small SVM model to predict fraud categories based on text or embeddings. Example prediction:  
+pred = model.predict([embedding])[0]  
 
-ML Prediction Example:
-pred = model.predict([embedding])[0]
-# → "identity_theft"
+Dashboard tabs include: raw scraped articles, keyword frequencies and word clouds, trend analysis and bar charts, semantic search (preset and custom queries), and ML alerts flagging higher-risk fraud categories.
 
-🔎 Full Pipeline Overview
+---
 
-1️⃣ CFPB Scraper
+## 4. Findings
+This project makes fraud trends across CFPB publications easier to explore and compare. The dashboard reveals repeated themes such as unauthorized transfers, identity theft, mortgage issues, and UDAP. Semantic search helps group cases that use different wording but describe similar events.
 
-Scrapes from:
-	•	CFPB Newsroom
-	•	CFPB Blog
-	•	CFPB Enforcement Actions
+Observed patterns include frequent identity theft cases, unauthorized payment transfers, UDAP categories, and loan or servicing issues. Semantic search links ACH errors, account takeovers, Zelle disputes, and similar complaints. The ML classifier highlights articles that resemble known categories even when they are not explicitly labeled.
 
-Extracts:
-title, date, url, text, source.
+Examples of insights:  
+Searching for “unauthorized Zelle transfer” retrieves ACH disputes, account takeover reports, and related withdrawal issues. High-risk categories such as Regulation E violations and crypto fraud appear immediately in the alerts tab.
 
-⸻
+Visualizations such as bar charts, word clouds, and search-result displays can be inserted here to demonstrate the findings clearly.
 
-2️⃣ Fraud Detection (Regex Rule-Based)
+---
 
-Fraud types identified include:
-Category         example
-
-Identity Theft:  account takeover, stolen info
-
-Payment App Fraud: Zelle/ACH unauthorized transfers
-Card Fraud: debit/credit disputes
-Loan/Investment Scams: payday, student loan, mortgage
-Crypto Fraud: crypto exchanges, transfers
-Romance / Social Scams: impersonation, fake profiles
-UDAP: deceptive abusive practices
-
-Outputs: fraud_type, fraud_tags, summary.
-
-3️⃣ Supabase Storage
-
-Tables:
-	•	cfpb_articles — all article metadata + embeddings + ML predictions
-	•	search_queries — cached query embeddings to save OpenAI cost
-
-⸻
-
-4️⃣ Embedding Pipeline
-	•	Model: text-embedding-3-small
-	•	1536-dimensional vector
-	•	Stored directly in Supabase (pgvector column)
-
-⸻
-
-5️⃣ Semantic Search Engine
-
-Tools:
-	•	Cached query embeddings
-	•	match_cfpb_articles RPC
-	•	pgvector cosine similarity
-	•	Filters:
-	•	by year
-	•	by keyword
-	•	min similarity threshold
-
-6️⃣ Streamlit Dashboard
-
-Tabs:
-Tab                 Contents
-Week 2: Scraper:    Browse raw scraped articles
-Week 3: Fraud Detection:  Keyword charts, word cloud, tag frequencies
-Week 4: Analysis:    Trends, bar charts, ML analytics
-Semantic Search:     Preset scenarios + custom query search
-ML Alerts:        High-risk fraud notifications
-
-📊 Findings & Why This Project Matters
-
-✔️ 1. Fraud patterns become visible
-
-Charts and word clouds reveal dominant fraud categories (Zelle, identity theft, UDAP).
-
-✔️ 2. Semantic search finds similar cases even with different wording
-
-Example:
-
-“unauthorized zelle transfer”
-
-Matches:
-	•	ACH errors
-	•	account takeover
-	•	unauthorized withdrawals
-
-✔️ 3. ML classifier identifies fraud types automatically
-
-Even if CFPB didn’t tag it.
-
-✔️ 4. High-Priority Alerts
-
-Shows articles involving:
-	•	Regulation E
-	•	Crypto fraud
-	•	Wire transfer fraud
-	•	Identity theft
-
-These surface instantly in the dashboard.
-
-✔️ 5. Supabase + Streamlit = Real production workflow
-
-This demonstrates real-world:
-	•	ETL pipeline
-	•	Vector database setup
-	•	LLM embeddings
-	•	ML training
-	•	UI front-end
-
-⸻
-
-🧾 .gitignore
-.env
-data/
-__pycache__/
-*.pyc
-.venv/
+.gitignore Important Entries:  
+.env  
+data/  
+__pycache__/  
+*.pyc  
+.venv/  
 uv.lock
-
-
-
-⸻
-
-🎉 Summary
-
-This project demonstrates end-to-end NLP + ML engineering, including scraping, embedding, vector search, classification, and dashboarding — all using modern tools (Supabase, OpenAI, Streamlit, uv).

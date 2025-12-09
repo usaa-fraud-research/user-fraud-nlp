@@ -18,6 +18,57 @@ from joblib import load
 from ml_train import _parse_embedding  # reuse the same logic
 import numpy as np 
 
+# ----------- GLOBAL THEME (auto light/dark) -----------
+st.markdown("""
+<style>
+:root {
+    /* LIGHT MODE */
+    --primary-color: #234ea5;
+    --text-color: #000000;
+    --bg-color: #ffffff;
+    --secondary-bg: #f5f7fa;
+}
+
+/* DARK MODE */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #4ea8de;
+        --text-color: #f8f9fa;
+        --bg-color: #0e1117;
+        --secondary-bg: #161b22;
+    }
+}
+
+/* Apply theme */
+body, .stApp {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+h1, h2, h3, h4 {
+    color: var(--text-color);
+    font-weight: 600 !important;
+}
+
+.block-container {
+    max-width: 1400px;
+    padding-top: 2rem;
+}
+
+.metric-card {
+    background: var(--secondary-bg);
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid #2c2c2c20;
+}
+
+/* Clean dataframe */
+.dataframe td {
+    padding: 6px 12px !important;
+    font-size: 14px;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 
@@ -128,14 +179,32 @@ def main():
         except Exception as e:
             st.warning(f"ML model could not run: {e}")
             ml_available = False
-    week2, week3, week4, semtab = st.tabs(
-        [
-            "📄 Part 1: Scraper",
-            "🔍 Part 2: Fraud Detection",
-            "📊 Part 3: Analysis",
-            "🔎 Semantic Search",
-        ]
+    home, week2, week3, week4, semtab = st.tabs(
+    [
+        "Home",
+        "Scraper",
+        "Fraud Detection",
+        "Analysis",
+        "Semantic Search",
+    ]
     )
+
+    with home:
+        st.header("USAA Fraud NLP Dashboard")
+        st.write(
+            """
+            This dashboard showcases a full end-to-end project for detecting and analyzing fraud-related articles
+            from the CFPB database using NLP techniques.
+
+            **Project Weeks Overview:**
+            - **Week 2:** Build a web scraper to collect CFPB complaint articles.
+            - **Week 3:** Implement fraud detection tagging using keyword matching and ML classification.
+            - **Week 4:** Perform trend analysis and visualization of fraud types over time.
+            - **Semantic Search:** Enable semantic search over articles using OpenAI embeddings and pgvector.
+
+            Use the tabs above to navigate through each week's work and explore the data, models, and insights!
+            """
+        )
 
     # =======================
     # WEEK 2 — SCRAPER
@@ -393,7 +462,7 @@ def main():
         # GitHub intensity color scale
         def intensity_color(count):
             if count == 0:
-                return "#161b22"  # empty
+                return  "transparent" # empty
             elif count == 1:
                 return "#0e4429"  # light
             elif count <= 3:
@@ -424,11 +493,22 @@ def main():
             grid-gap: 2px;
             width: 100%;
         }
-        .daybox {
-            width: 100%;
-            height: 14px;
-            border-radius: 2px;
-            cursor: pointer;
+            <style>
+            .daybox {
+                width: 100%;
+                height: 14px;
+                border-radius: 3px;
+                cursor: pointer;
+                background: transparent !important;      /* empty days stay transparent */
+                border: 1px solid #161b22 !important;    /* outline for all days */
+            }
+
+            /* Hover */
+            .daybox:hover {
+                outline: 1px solid #58a6ff !important;
+            }
+            </style>
+
         }
         .daybox:hover {
             outline: 1px solid #58a6ff;

@@ -1,4 +1,4 @@
-# CFPB Fraud Intelligence Dashboard
+# Consumer Financial Protection Bureau (CFPB) Fraud Intelligence Dashboard
 Tagline: A dashboard and NLP pipeline for analyzing fraud themes in CFPB articles  
 Team Members: Carlin Crawford, Gustave Mensah, Alex Stevenson, Darren Summerlee
 

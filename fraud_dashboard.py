@@ -190,7 +190,7 @@ def main():
             This dashboard showcases a full end-to-end project for detecting and analyzing fraud-related articles
             from the CFPB database using NLP techniques.
 
-            **Project Weeks Overview:**
+            **Project Parts Overview:**
             - **Part 1:** Build a web scraper to collect CFPB complaint articles.
             - **Part 2:** Implement fraud detection tagging using keyword matching and ML classification.
             - **Part 3:** Perform trend analysis and visualization of fraud types over time.

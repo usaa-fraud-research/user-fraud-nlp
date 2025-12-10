@@ -19,8 +19,7 @@ Run the dashboard using the command: uv run streamlit run fraud_dashboard.py
 
 ## 3. Visuals / Application Design
 System Architecture (Mermaid Diagram): <br>
-<img width="336" height="500" alt="Screenshot 2025-12-01 at 1 23 51 PM" src="https://github.com/user-attachments/assets/bbc85b44-e447-4b72-878a-62210e713879" />
-
+<img width="840" height="226" alt="Screenshot 2025-12-10 at 11 55 28 AM" src="https://github.com/user-attachments/assets/8d3c6bbe-d6f4-4d3e-935e-80808e6363a0" />
 
 
 Screenshots 

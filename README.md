@@ -2,8 +2,8 @@
 Tagline: A dashboard and NLP pipeline for analyzing fraud themes in CFPB articles  
 Team Members: Carlin Crawford, Gustave Mensah, Alex Stephenson, Darren Summerlee
 
-## 1. One-Sentence Project Summary
-This project builds a full workflow that scrapes CFPB articles, identifies fraud-related patterns using NLP and embeddings, and presents the results in an interactive Streamlit dashboard.
+## 1. General Overview
+The world of fraud moves quickly, and it’s easy to get lost in the sea of information, news, and trends surrounding fraud. Additionally, with budget cuts particularly related to our source (CFPB), there are fewer ways to stay informed on trends. Our product provides a solution by consolidating information from the CFPB on an adjustable, accessible dashboard, allowing the user to identify trends from previous years, seasons, etc.
 
 ---
 

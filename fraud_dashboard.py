@@ -18,6 +18,8 @@ from joblib import load
 from ml_train import _parse_embedding  # reuse the same logic
 import numpy as np 
 
+st.set_page_config(page_title="USAA Fraud NLP Dashboard", layout="wide")
+
 # ----------- GLOBAL THEME (auto light/dark) -----------
 st.markdown("""
 <style>
@@ -84,7 +86,7 @@ SEMANTIC_PRESETS = {
     "⚖️ UDAP / deceptive practices": "unfair, deceptive, or abusive acts and practices in banking or lending",
 }
 
-MODEL_PATH = "/Users/gustave/Desktop/untitled folder 2/usaa_nlp/user-fraud-nlp/models/svm_fraud_type.joblib"
+MODEL_PATH = r"C:\Dev\user-fraud-nlp\models\svm_fraud_type.joblib"
 @st.cache_resource
 def load_ml_model():
     try:
@@ -132,19 +134,12 @@ def run_cached_semantic(query, top_k, threshold, year, keyword):
         year=year,
         keyword=keyword,
     )
-@st.cache_resource
-def load_ml_model():
-    """Load the trained fraud-type classifier (SVM or logistic)."""
-    model_path = "models/svm_fraud_type.joblib"  # or your actual filename
-    return load(model_path)
-
 
 
 # ------------------------------------------------------------
 # Main Streamlit App
 # ------------------------------------------------------------
 def main():
-    st.set_page_config(page_title="USAA Fraud NLP Dashboard", layout="wide")
     st.title("USAA Fraud Detection Dashboard")
 
     df = load_data()
@@ -197,9 +192,9 @@ def main():
             from the CFPB database using NLP techniques.
 
             **Project Weeks Overview:**
-            - **Week 2:** Build a web scraper to collect CFPB complaint articles.
-            - **Week 3:** Implement fraud detection tagging using keyword matching and ML classification.
-            - **Week 4:** Perform trend analysis and visualization of fraud types over time.
+            - **Part 1:** Build a web scraper to collect CFPB complaint articles.
+            - **Part 2:** Implement fraud detection tagging using keyword matching and ML classification.
+            - **Part 3:** Perform trend analysis and visualization of fraud types over time.
             - **Semantic Search:** Enable semantic search over articles using OpenAI embeddings and pgvector.
 
             Use the tabs above to navigate through each week's work and explore the data, models, and insights!
@@ -207,10 +202,10 @@ def main():
         )
 
     # =======================
-    # WEEK 2 — SCRAPER
+    # Part 1 — SCRAPER
     # =======================
     with week2:
-        st.header("Week 2 — Build Scraper")
+        st.header("Part 1 — Build Scraper")
         st.write("Goal: Get articles from CFPB source and clean text for analysis.")
         st.write(f"**Total Articles Scraped:** {len(df)}")
         st.dataframe(df[["title", "date", "url"]].head(10))
@@ -223,10 +218,10 @@ def main():
         st.text_area("Excerpt", (sample.get("text") or "")[:600] + "...")
 
     # ==========================
-    # WEEK 3 — FRAUD DETECTION
+    # Part 2 — FRAUD DETECTION
     # ==========================
     with week3:
-        st.header("Week 3 — Fraud Detection")
+        st.header("Part 2 — Fraud Detection")
         st.write("Goal: Identify and tag fraud-related articles.")
 
         st.metric(
@@ -288,10 +283,10 @@ def main():
                     )
 
     # ==========================
-    # WEEK 4 — ANALYSIS
+    # Part 3 — ANALYSIS
     # ==========================
     with week4:
-        st.header("Week 4 — Full Pipeline & Trend Analysis")
+        st.header("Part 3 — Full Pipeline & Trend Analysis")
         st.write(
             "Goal: Complete pipeline (scrape → detect → summarize) and identify top trends."
         )

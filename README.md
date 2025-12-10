@@ -25,14 +25,19 @@ System Architecture (Mermaid Diagram): <br>
 
 Screenshots 
 Dashboard Home 
-![alt text](image-1.png)
-![alt text](image-4.png)
+<img width="1883" height="527" alt="image" src="https://github.com/user-attachments/assets/d12de81d-a589-4015-b03d-580b1130833c" />
+
+<img width="1830" height="432" alt="image" src="https://github.com/user-attachments/assets/76734b3c-ef49-44ea-bb1f-ebf3c711c9fc" />
+
 Semantic Search Page 
 ![alt text](image.png) 
 ML Alerts Panel 
 ![alt text](image-2.png)
 Fraud type
-![alt text](image-3.png)
+<img width="1809" height="443" alt="image" src="https://github.com/user-attachments/assets/5bd8d4b8-7318-482e-8834-c41b1e996029" />
+<img width="1832" height="248" alt="image" src="https://github.com/user-attachments/assets/6d65b8e7-b623-415f-b784-4e592a8d8086" />
+
+
 
 
 

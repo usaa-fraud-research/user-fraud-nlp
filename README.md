@@ -7,7 +7,7 @@ The world of fraud moves quickly, and it’s easy to get lost in the sea of info
 
 ---
 
-## 2. Quick Start
+## 2. Quick Start (Local Only)
 Install dependencies using the command: uv sync  
 Create a .env file with the following variables:  
 SUPABASE_URL=your-url  

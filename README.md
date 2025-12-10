@@ -30,7 +30,8 @@ Dashboard Home
 <img width="1830" height="432" alt="image" src="https://github.com/user-attachments/assets/76734b3c-ef49-44ea-bb1f-ebf3c711c9fc" />
 
 Semantic Search Page 
-![alt text](image.png) 
+<img width="1840" height="786" alt="image" src="https://github.com/user-attachments/assets/23e2ba97-f06a-43bf-9b15-3a9dd40b73e2" />
+
 ML Alerts Panel 
 ![alt text](image-2.png)
 Fraud type

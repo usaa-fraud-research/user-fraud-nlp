@@ -43,7 +43,7 @@ app = modal.App("cfpb-fraud-dashboard", image=image)
 # 🌍 Public Web Deployment
 # -----------------------------------------------------------------------------
 @app.function(
-    secrets=[modal.Secret.from_name("custom-secret")]  # make sure this secret exists
+    secrets=[modal.Secret.from_name("cfpb-dashboard-secret")]  # make sure this secret exists
 )
 @modal.web_server(port=8000, startup_timeout=600)
 def run():

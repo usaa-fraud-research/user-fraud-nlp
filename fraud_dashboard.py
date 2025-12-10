@@ -86,7 +86,7 @@ SEMANTIC_PRESETS = {
     "⚖️ UDAP / deceptive practices": "unfair, deceptive, or abusive acts and practices in banking or lending",
 }
 
-MODEL_PATH = r"C:\Dev\user-fraud-nlp\models\svm_fraud_type.joblib"
+MODEL_PATH = MODEL_PATH = "/root/models/svm_fraud_type.joblib"
 @st.cache_resource
 def load_ml_model():
     try:

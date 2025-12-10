@@ -462,7 +462,7 @@ def main():
         # GitHub intensity color scale
         def intensity_color(count):
             if count == 0:
-                return  "transparent" # empty
+                return "#161b22"  # empty
             elif count == 1:
                 return "#0e4429"  # light
             elif count <= 3:
@@ -493,22 +493,11 @@ def main():
             grid-gap: 2px;
             width: 100%;
         }
-            <style>
-            .daybox {
-                width: 100%;
-                height: 14px;
-                border-radius: 3px;
-                cursor: pointer;
-                background: transparent !important;      /* empty days stay transparent */
-                border: 1px solid #161b22 !important;    /* outline for all days */
-            }
-
-            /* Hover */
-            .daybox:hover {
-                outline: 1px solid #58a6ff !important;
-            }
-            </style>
-
+        .daybox {
+            width: 100%;
+            height: 14px;
+            border-radius: 2px;
+            cursor: pointer;
         }
         .daybox:hover {
             outline: 1px solid #58a6ff;

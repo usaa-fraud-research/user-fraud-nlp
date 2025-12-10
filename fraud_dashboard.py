@@ -145,13 +145,13 @@ def load_ml_model():
 # ------------------------------------------------------------
 def main():
     st.set_page_config(page_title="USAA Fraud NLP Dashboard", layout="wide")
-    st.title("🧠 USAA Fraud Detection — Full Project Dashboard")
+    st.title("USAA Fraud Detection Dashboard")
 
     df = load_data()
     if df.empty:
-        st.error("❌ No data found in Supabase. Please run scraper + upload first.")
+        st.error("No data found in Supabase. Please run scraper + upload first.")
         return
-    st.success(f"✅ Loaded {len(df)} CFPB articles") 
+    st.success(f"Loaded {len(df)} CFPB articles") 
         # --------------------------------------------------------
     # Attach ML predictions (logistic regression on embeddings)
     # --------------------------------------------------------
@@ -262,7 +262,7 @@ def main():
                 # ==========================
         # 🔔 Simple ML Alerts
         # ==========================
-        st.subheader("🔔 ML Alerts (high-priority fraud types)")
+        st.subheader("Alerts for High Priority Fraud Types")
 
         if not ml_available:
             st.caption("ML model not available or no embeddings column in Supabase.")
@@ -336,7 +336,7 @@ def main():
         c4.metric("Fraud Types Displayed", len(selected_types))
         c5.metric("Date Range", f"{date_range[0]} → {date_range[1]}")
 
-        st.subheader("🔑 Top Keywords / Phrases")
+        st.subheader("Top Keywords / Phrases")
         if not filtered_df.empty:
             tags = filtered_df["fraud_tags"].dropna().tolist()
             all_tags = [
@@ -358,7 +358,7 @@ def main():
             )
             st.plotly_chart(fig_kw, use_container_width=True)
 
-        st.subheader("🚨 Top Fraud Types")
+        st.subheader("Top Fraud Types")
         fraud_trend = (
             filtered_df.groupby("fraud_type")
             .size()
@@ -462,7 +462,7 @@ def main():
         # GitHub intensity color scale
         def intensity_color(count):
             if count == 0:
-                return "#161b22"  # empty
+                return "#B9B9B9"  # empty
             elif count == 1:
                 return "#0e4429"  # light
             elif count <= 3:
@@ -470,7 +470,7 @@ def main():
             elif count <= 6:
                 return "#26a641"  # high
             else:
-                return "#39d353"  # very high
+                return "#00ff2a"  # very high
 
         # Build HTML
         html = """
@@ -628,7 +628,7 @@ def main():
                 # ==========================
         # 🔥 Top 3 Trending Fraud Types (Year-Aware)
         # ==========================
-        st.subheader("🔥 Top 3 Trending Fraud Types")
+        st.subheader("Top 3 Trending Fraud Types")
 
         # Use the selected year if enabled; otherwise fallback to current year
         selected_year = year if enable_year and year else pd.Timestamp.now().year
@@ -658,7 +658,7 @@ def main():
 
             top3 = top_year.head(3)
 
-            st.markdown(f"### 📆 Showing trends for **{selected_year}**")
+            st.markdown(f"###Showing trends for **{selected_year}**")
             st.markdown("---")
 
             # Clickable top 3
@@ -678,7 +678,7 @@ def main():
         # ==========================
         # 📰 Filtered Article List (by click + year)
         # ==========================
-        st.subheader("📰 Filtered Articles")
+        st.subheader("Filtered Articles")
 
         selected_type = st.query_params.get("selected_type", None)
         selected_year_param = st.query_params.get("selected_year", None)
@@ -722,14 +722,14 @@ def main():
     # SEMANTIC SEARCH (embeddings)
     # ==========================
     with semtab:
-        st.header("🔎 Semantic Search — Embeddings + pgvector")
+        st.header("Semantic Search ")
         st.write(
             "Use semantic search to find CFPB articles that **mean** the same thing as your question, "
             "even if they use different words."
         )
 
         # 1️⃣ Choose a preset or type your own question
-        st.markdown("### 1️⃣ Pick a scenario or ask your own question")
+        st.markdown("### Pick a scenario or ask your own question")
 
         colA, colB = st.columns([3, 1])
 
@@ -774,10 +774,10 @@ def main():
             help="How many top-ranked matches to return (sorted by semantic similarity).",
         )
 
-        st.caption(f"🔍 {source_label}")
+        st.caption(f"{source_label}")
 
         # 2️⃣ Advanced search settings
-        st.markdown("### 2️⃣ Tune search settings (optional)")
+        st.markdown("### Tune search settings (optional)")
 
         colC, colD = st.columns([1, 1])
         threshold = colC.number_input(
@@ -823,7 +823,7 @@ def main():
         )
 
         # 3️⃣ Run search
-        st.markdown("### 3️⃣ Run search")
+        st.markdown("### Run search")
 
         if st.button("Run semantic search", type="primary"):
             if not effective_query:

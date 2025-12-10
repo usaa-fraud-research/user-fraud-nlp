@@ -76,14 +76,14 @@ h1, h2, h3, h4 {
 
 # Preset semantic search scenarios (high-level questions)
 SEMANTIC_PRESETS = {
-    "🔁 Zelle / payment app scams": "unauthorized zelle or payment app transfers and how the bank resolved them",
-    "🪪 Identity theft & account takeover": "identity theft on credit cards or bank accounts and how it was resolved",
-    "🏠 Mortgage & home lending issues": "mortgage servicing errors, foreclosure, escrow problems, misleading home loans",
-    "🎓 Student loan servicing problems": "student loan servicing issues, misapplied payments, and forgiveness confusion",
-    "📞 Debt collection harassment": "aggressive or illegal debt collection tactics and consumer protections",
-    "💳 Credit reporting errors (FCRA)": "credit report errors, disputes under FCRA, and correction outcomes",
-    "🌍 Remittances / international transfers": "remittance transfer problems, high fees, or lost international payments",
-    "⚖️ UDAP / deceptive practices": "unfair, deceptive, or abusive acts and practices in banking or lending",
+    "Zelle / payment app scams": "unauthorized zelle or payment app transfers and how the bank resolved them",
+    "Identity theft & account takeover": "identity theft on credit cards or bank accounts and how it was resolved",
+    "Mortgage & home lending issues": "mortgage servicing errors, foreclosure, escrow problems, misleading home loans",
+    "Student loan servicing problems": "student loan servicing issues, misapplied payments, and forgiveness confusion",
+    "Debt collection harassment": "aggressive or illegal debt collection tactics and consumer protections",
+    "Credit reporting errors (FCRA)": "credit report errors, disputes under FCRA, and correction outcomes",
+    "Remittances / international transfers": "remittance transfer problems, high fees, or lost international payments",
+    "UDAP / deceptive practices": "unfair, deceptive, or abusive acts and practices in banking or lending",
 }
 
 MODEL_PATH = MODEL_PATH = "/root/models/svm_fraud_type.joblib"
@@ -653,7 +653,7 @@ def main():
 
             top3 = top_year.head(3)
 
-            st.markdown(f"###Showing trends for **{selected_year}**")
+            st.markdown(f"### Showing trends for **{selected_year}**")
             st.markdown("---")
 
             # Clickable top 3

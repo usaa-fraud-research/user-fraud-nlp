@@ -9,7 +9,6 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from collections import Counter
-from wordcloud import WordCloud
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from semantic_search import search as semantic_search
@@ -248,12 +247,6 @@ def main():
         st.bar_chart(kw_df.set_index("Keyword"))
         st.dataframe(kw_df)
 
-        st.subheader("Word Cloud of Fraud Keywords")
-        if tag_list:
-            wordcloud = WordCloud(
-                width=800, height=400, background_color="white"
-            ).generate(" ".join(tag_list))
-            st.image(wordcloud.to_array(), width=800)
                 # ==========================
         # 🔔 Simple ML Alerts
         # ==========================
